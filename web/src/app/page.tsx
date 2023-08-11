@@ -1,31 +1,64 @@
-import { cookies } from "next/headers"
-import { Copyright } from '@/components/Copyright';
 import { EmptyMemories } from '@/components/EmptyMemories';
-import { Hero } from '@/components/Hero';
-import { SignIn } from '@/components/SingIn';
-import { Profile } from "@/components/Profile";
+import { api } from '@/lib/api';
+import dayjs from 'dayjs';
+import { ArrowRight } from 'lucide-react';
+import { cookies } from 'next/headers';
+import Image from 'next/image';
+import Link from 'next/link';
 
-export default function Home() {
-  const isAuthenticated = cookies().has("token")
+interface Memory {
+   id: string
+   coverUrl: string
+   excerpt: string
+   createdAt: string
+}
 
-  return <main className="grid grid-cols-2 min-h-screen">
-    {/* Left */}
-    <div className="flex flex-col items-start justify-between px-28 py-16 relative overflow-hidden border-r border-white/10 bg-[url(../assets/bg-stars.svg)] bg-cover">
-      {/* Blur */}
-      <div className="absolute right-0 top-1/2 h-[288px] w-[526px] bg-purple-700 opacity-50 -translate-y-1/2 translate-x-1/2 rounded-full blur-full"></div>
+export default async function Home() {
 
-      {/* Stripes */}
-      <div className="absolute right-2 top-0 bottom-0 w-2 bg-stripes "/>
+   const isAuthenticated = cookies().has("token")
 
-        {isAuthenticated? <Profile /> : <SignIn />}
-        <Hero />
-        <Copyright />
 
-    </div>
+   if(!isAuthenticated) {
+      return(
+         <EmptyMemories />
+        )   
+   }
+   
+   const token = cookies().get("token")?.value
 
-    {/* Right */}
-    <div className="flex flex-col p-16 bg-[url(../assets/bg-stars.svg)] bg-cover">
+   const response = await api.get("/memories", {
+      headers: {
+         Authorization: `Bearer ${token}`
+      }
+   })
+
+   const memories: Memory[] = response.data
+
+if (memories.length === 0) {
+   return(
       <EmptyMemories />
-    </div>
-  </main>;
+     )
+}
+
+   return <div className='flex flex-col gap-10 p-8'>
+      {memories.map(memory => {
+         return (
+            <div key={memory.id} className='space-y-4'>
+               <time className='flex items-center gap-2 text-sm text-gray-100 -ml-8 before:h-px before:w-5 before:bg-gray-50'>
+                  {dayjs(memory.createdAt).format('D[ de ]MMMM[, ]YYYY')}
+               </time>
+               <Image src={memory.coverUrl} width={592} height={280} alt='' className='w-full aspect-video object-cover rounded-lg' />
+               <p className='text-lg leading-relaxed text-gray-100'>
+                  {memory.excerpt}
+               </p>
+               <Link href={`/memories/${memory.id}`} className='flex items-center gap-2 text-gray-200 hover:text-gray-100'>
+               Read more
+               <ArrowRight className='w-4 h-4' />
+               </Link>
+            </div>
+         )
+      })}
+   </div>
+
+   
 }
